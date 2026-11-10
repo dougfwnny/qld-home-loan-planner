@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QLD Home Loan Planner</title>
+<meta name="description" content="Free home loan planner for Queensland, Australia: repayments, deposit needed, what you can afford and the income banks require, with stamp duty, LMI and buying costs.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230A6A5E'/%3E%3Cpath d='M8 15.5 16 9l8 6.5V24h-5.5v-5h-5v5H8z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+/* Base reset */
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&display=swap">
+<style>
+/* Layout: mode switch on top; inputs left (sticky on desktop), results right; one column + fixed result bar on phones */
+:root{
+  --bg:#EDF2EF; --surface:#FFFFFF; --ink:#13292B; --muted:#56696A; --line:#D3DDD9;
+  --accent:#0A6A5E; --accent-ink:#FFFFFF; --accent-soft:#DBEDE8;
+  --warn:#9C4A12; --warn-soft:#F6E6D8; --crit:#A8231C; --crit-soft:#F7E0DE; --ok:#246B41; --ok-soft:#DFF0E4;
+  --c-dep:#0A6A5E; --c-duty:#3A5A85; --c-lmi:#C87530; --c-other:#9AABA7;
+  --shadow:0 1px 3px rgba(19,41,43,.18);
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1516; --surface:#152022; --ink:#E3ECE9; --muted:#93A6A3; --line:#26373A;
+    --accent:#47BEA8; --accent-ink:#05201C; --accent-soft:#14312C;
+    --warn:#E6A06A; --warn-soft:#352417; --crit:#F08C82; --crit-soft:#3A1D1B; --ok:#73C995; --ok-soft:#16301F;
+    --c-dep:#47BEA8; --c-duty:#7FA2D2; --c-lmi:#E3995B; --c-other:#5D706D;
+    --shadow:0 1px 3px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1516; --surface:#152022; --ink:#E3ECE9; --muted:#93A6A3; --line:#26373A;
+  --accent:#47BEA8; --accent-ink:#05201C; --accent-soft:#14312C;
+  --warn:#E6A06A; --warn-soft:#352417; --crit:#F08C82; --crit-soft:#3A1D1B; --ok:#73C995; --ok-soft:#16301F;
+  --c-dep:#47BEA8; --c-duty:#7FA2D2; --c-lmi:#E3995B; --c-other:#5D706D;
+  --shadow:0 1px 3px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.page{max-width:1120px;margin:0 auto;padding-block:28px 132px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));display:flex;flex-direction:column;gap:22px}
+@media (min-width:880px){.page{padding-block:44px 64px;gap:26px}}
+
+/* Header */
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+h1{font-family:var(--font-display);font-weight:760;font-size:clamp(32px,6.4vw,50px);line-height:1.02;letter-spacing:-.025em;margin:0;text-wrap:balance}
+.lede{max-width:60ch;color:var(--muted);margin:12px 0 0;font-size:16px}
+
+/* Mode switch */
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px}
+.modes button{appearance:none;border:0;background:transparent;border-radius:11px;padding:10px 12px;text-align:left;color:var(--ink);font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0}
+.modes button:hover{background:var(--accent-soft)}
+.modes button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.modes button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.m-t{font-weight:650;font-size:14.5px;line-height:1.2}
+.m-s{font-size:12.5px;opacity:.78;line-height:1.3}
+@media (max-width:560px){
+  .m-s{display:none}
+  .modes button{text-align:center;align-items:center;justify-content:center;padding:10px 6px}
+  .m-t{font-size:13px}
+}
+
+/* Main grid */
+.grid{display:grid;gap:22px;align-items:start}
+@media (min-width:880px){
+  .grid{grid-template-columns:minmax(0,1fr) minmax(0,1.08fr);gap:26px}
+  .inputs{position:sticky;top:calc(16px + env(safe-area-inset-top, 0px));max-height:calc(100vh - 32px);overflow:auto}
+}
+
+/* Input panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:24px;min-width:0}
+.field{display:flex;flex-direction:column;gap:8px}
+.f-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.f-head label,.f-head .lbl{font-weight:600;font-size:14.5px}
+.money{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--bg);min-width:0}
+.money:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.money span{color:var(--muted);font-size:13.5px;font-weight:600}
+.money input{border:0;background:transparent;font-family:var(--font-display);font-size:20px;font-weight:650;width:9.2ch;padding:7px 0;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;outline:none;min-width:0}
+.money.small input{width:5ch}
+.val{font-family:var(--font-display);font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+.ticks{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-4px}
+.hint{font-size:13px;color:var(--muted);margin:0;max-width:60ch}
+.hint b{color:var(--ink);font-weight:600}
+
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0;cursor:pointer;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:linear-gradient(to right,var(--accent) var(--p),var(--line) var(--p))}
+input[type=range]::-moz-range-track{height:6px;border-radius:99px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:6px;border-radius:99px;background:var(--accent)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);margin-top:-9px;box-shadow:var(--shadow)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:var(--shadow)}
+input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:8px}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:1px solid var(--line);background:transparent;border-radius:99px;padding:5px 11px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.chips button small{color:var(--muted);font-size:12px;margin-left:4px}
+.chips button.on{border-color:var(--accent);background:var(--accent-soft)}
+.chips button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Buying costs */
+details.costs{border-top:1px solid var(--line);padding-top:18px}
+details.costs summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+details.costs summary::-webkit-details-marker{display:none}
+details.costs summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
+.sum-t{font-weight:650;font-size:14.5px;display:block}
+.sum-v{font-size:13px;color:var(--muted);display:block}
+.sum-a{font-size:13px;font-weight:600;color:var(--accent);white-space:nowrap}
+details[open] .sum-a .closed,details:not([open]) .sum-a .opened{display:none}
+.costs-body{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+select{font:inherit;font-size:14.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;cursor:pointer}
+.check input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.check small{display:block;color:var(--muted);font-size:12.5px}
+.note{font-size:13px;border-radius:10px;padding:10px 12px;background:var(--warn-soft);color:var(--ink);margin:0}
+.note b{color:var(--warn)}
+
+/* Results */
+.results{display:flex;flex-direction:column;gap:14px;min-width:0;scroll-margin-top:16px}
+.hero{background:var(--accent);color:var(--accent-ink);border-radius:18px;padding:22px 22px 20px}
+.h-label{margin:0;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:650;opacity:.85}
+.h-value{margin:6px 0 4px;font-family:var(--font-display);font-weight:780;font-size:clamp(44px,11vw,64px);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.h-value .cur{font-size:.42em;font-weight:650;letter-spacing:0;margin-right:.18em;vertical-align:.62em;opacity:.85}
+.h-value .per{font-size:.32em;font-weight:600;letter-spacing:0;margin-left:.12em;opacity:.8}
+.h-sub{margin:0;font-size:14.5px;opacity:.92;font-variant-numeric:tabular-nums}
+
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{margin:0;border-radius:12px;padding:11px 14px;font-size:14px;line-height:1.45}
+.alert.warn{background:var(--warn-soft)}
+.alert.warn b{color:var(--warn)}
+.alert.crit{background:var(--crit-soft)}
+.alert.crit b{color:var(--crit)}
+.alert.ok{background:var(--ok-soft)}
+.alert.ok b{color:var(--ok)}
+
+.block{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 20px}
+.block h2{font-family:var(--font-display);font-size:18px;font-weight:680;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.b-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.b-head strong{font-family:var(--font-display);font-size:24px;font-weight:720;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:14px 0 4px;gap:2px;background:var(--line)}
+.stack i{display:block;height:100%;transition:flex-basis .25s ease;min-width:0}
+.rows{margin:6px 0 0;display:flex;flex-direction:column}
+.rows > div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.rows > div:first-child{border-top:0}
+.rows dt{font-size:14.5px;min-width:0}
+.rows dt small{display:block;color:var(--muted);font-size:12.5px}
+.rows dd{margin:0;font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
+.chip{display:inline-block;border-radius:99px;padding:3px 10px;font-size:13px;font-weight:650}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}
+
+.tbl-wrap{overflow-x:auto;margin-top:8px}
+table.sens{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14.5px}
+.sens th{text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 8px 6px 0}
+.sens th:not(:first-child),.sens td:not(:first-child){text-align:right;padding-right:0;padding-left:8px}
+.sens td{padding:9px 8px 9px 0;border-top:1px solid var(--line);white-space:nowrap}
+.sens tr.cur td{font-weight:700}
+.sens tr.cur td:first-child::after{content:"current";margin-left:8px;font-size:11.5px;font-weight:650;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:2px 8px}
+.sens tr.stress td:first-child::after{content:"bank test";margin-left:8px;font-size:11.5px;font-weight:650;color:var(--warn);background:var(--warn-soft);border-radius:99px;padding:2px 8px}
+@media (max-width:560px){
+  table.sens{font-size:14px}
+  .sens tr.cur td:first-child::after,.sens tr.stress td:first-child::after{display:block;width:max-content;margin:3px 0 0}
+  .sens td{vertical-align:top}
+}
+.sens .up{color:var(--warn)}
+.sens .down{color:var(--ok)}
+.fine{font-size:13px;color:var(--muted);margin:10px 0 0}
+
+/* Approval */
+.b-sub{font-size:13.5px;color:var(--muted);margin:4px 0 0}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.tile{border-radius:14px;padding:14px;background:var(--bg);min-width:0}
+.tile.main{background:var(--accent-soft)}
+.t-l{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:650}
+.t-v{display:block;font-family:var(--font-display);font-size:clamp(20px,5.2vw,28px);font-weight:740;font-variant-numeric:tabular-nums;line-height:1.15;margin:4px 0 2px;overflow-wrap:anywhere}
+.t-v small{font-size:.5em;font-weight:600;color:var(--muted)}
+.t-s{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}
+.status{margin:12px 0 0;border-radius:12px;padding:11px 14px;font-size:14px}
+.status.ok{background:var(--ok-soft)} .status.ok b{color:var(--ok)}
+.status.warn{background:var(--warn-soft)} .status.warn b{color:var(--warn)}
+.h3{font-family:var(--font-display);font-size:15.5px;font-weight:680;margin:18px 0 0}
+.rows dd.neg{color:var(--ink)}
+.rows dd.tot{font-family:var(--font-display);font-size:17px}
+.rows .sum-row{border-top:2px solid var(--ink)!important}
+table.matrix{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14.5px}
+.matrix th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 0;text-align:right}
+.matrix th:first-child,.matrix td:first-child{text-align:left}
+.matrix td{padding:8px 0;border-top:1px solid var(--line);text-align:right;white-space:nowrap}
+.matrix td:first-child{font-weight:600}
+.matrix td.hit{color:var(--accent);font-weight:750}
+.matrix td.hit::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px;vertical-align:middle}
+.matrix .grp th{text-align:right;padding-bottom:0;font-size:11.5px}
+
+/* Notes */
+.notes{border-top:1px solid var(--line);padding-top:22px;display:grid;gap:22px}
+@media (min-width:880px){.notes{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
+.notes h2{font-family:var(--font-display);font-size:18px;font-weight:680;margin:0 0 8px}
+.notes ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;color:var(--muted);font-size:14px;max-width:68ch}
+.notes li b{color:var(--ink);font-weight:600}
+.notes a{color:var(--accent);text-underline-offset:2px}
+.notes a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* Fixed bar on phones */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px max(16px, calc(16px + env(safe-area-inset-right, 0px))) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, calc(16px + env(safe-area-inset-left, 0px)));
+  transition:transform .25s ease}
+.bar.off{transform:translateY(115%)}
+.bar .b-l{display:block;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;opacity:.75;font-weight:600}
+.bar .b-v{display:block;font-family:var(--font-display);font-size:22px;font-weight:740;font-variant-numeric:tabular-nums;line-height:1.15}
+.bar button{appearance:none;border:1px solid currentColor;background:transparent;color:inherit;border-radius:99px;padding:8px 14px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+.bar button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (min-width:880px){.bar{display:none}}
+@media (prefers-reduced-motion: reduce){.bar,.stack i{transition:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <p class="eyebrow">Queensland · Australian dollars · rates as of 9 Nov 2026</p>
+    <h1>Home Loan Planner</h1>
+    <p class="lede">Start with what you already know: your deposit, the repayment you can afford, or how much you have saved. Everything else updates instantly, including stamp duty, LMI and Queensland buying costs.</p>
+  </header>
+
+  <nav class="modes" role="tablist" aria-label="What do you want to work out">
+    <button type="button" role="tab" id="tab-entrada" data-mode="entrada" aria-selected="true">
+      <span class="m-t">I have a deposit</span><span class="m-s">What will I repay?</span>
+    </button>
+    <button type="button" role="tab" id="tab-parcela" data-mode="parcela" aria-selected="false">
+      <span class="m-t">Target repayment</span><span class="m-s">What deposit do I need?</span>
+    </button>
+    <button type="button" role="tab" id="tab-orcamento" data-mode="orcamento" aria-selected="false">
+      <span class="m-t">What can I afford</span><span class="m-s">Based on my savings</span>
+    </button>
+  </nav>
+
+  <main class="grid">
+    <section class="panel inputs" aria-label="Your numbers">
+
+      <div class="field" data-show="entrada parcela">
+        <div class="f-head">
+          <label for="price">Property price</label>
+          <div class="money"><span>A$</span><input id="price" inputmode="numeric" autocomplete="off"></div>
+        </div>
+        <input type="range" id="price-r" min="300000" max="3000000" step="10000" aria-label="Property price slider">
+        <div class="ticks"><span>300k</span><span>3M</span></div>
+      </div>
+
+      <div class="field" data-show="entrada">
+        <div class="f-head">
+          <label for="deposit">Deposit</label>
+          <div class="money"><span>A$</span><input id="deposit" inputmode="numeric" autocomplete="off"></div>
+        </div>
+        <input type="range" id="deposit-r" min="5" max="80" step="1" aria-label="Deposit as a percentage of the price">
+        <div class="ticks"><span>5%</span><span id="dep-pct" style="color:var(--ink);font-weight:600">20% of price</span><span>80%</span></div>
+      </div>
+
+      <div class="field" data-show="parcela">
+        <div class="f-head">
+          <label for="target">Monthly repayment you want to pay</label>
+          <div class="money"><span>A$</span><input id="target" inputmode="numeric" autocomplete="off"></div>
+        </div>
+        <input type="range" id="target-r" min="1000" max="15000" step="50" aria-label="Monthly repayment slider">
+        <div class="ticks"><span>1k</span><span>15k</span></div>
+      </div>
+
+      <div class="field" data-show="orcamento">
+        <div class="f-head">
+          <label for="savings">Savings</label>
+          <div class="money"><span>A$</span><input id="savings" inputmode="numeric" autocomplete="off"></div>
+        </div>
+        <input type="range" id="savings-r" min="20000" max="1500000" step="5000" aria-label="Savings slider">
+        <div class="ticks"><span>20k</span><span>1.5M</span></div>
+        <p class="hint">Everything you have for the purchase: deposit <b>and</b> costs.</p>
+      </div>
+
+      <div class="field" data-show="orcamento">
+        <div class="f-head">
+          <label for="maxpay">Maximum monthly repayment</label>
+          <div class="money"><span>A$</span><input id="maxpay" inputmode="numeric" autocomplete="off"></div>
+        </div>
+        <input type="range" id="maxpay-r" min="1000" max="15000" step="50" aria-label="Maximum monthly repayment slider">
+        <div class="ticks"><span>1k</span><span>15k</span></div>
+      </div>
+
+      <div class="field">
+        <div class="f-head">
+          <label for="rate">Interest rate (p.a.)</label>
+          <div class="money small"><input id="rate" inputmode="decimal" autocomplete="off"><span>%</span></div>
+        </div>
+        <input type="range" id="rate-r" min="3" max="12" step="0.05" aria-label="Interest rate slider">
+        <div class="chips" id="rate-chips">
+          <button type="button" data-rate="6.25">6.25%<small>good deal</small></button>
+          <button type="button" data-rate="6.75">6.75%<small>average</small></button>
+          <button type="button" data-rate="7.25">7.25%<small>high</small></button>
+        </div>
+        <p class="hint">Variable, owner-occupier, principal and interest (P&amp;I). After the RBA hike on 3 Nov, the average is around 6.7% and good deals sit below 6.5%. Deposits under 20% usually get a slightly higher rate.</p>
+      </div>
+
+      <div class="field">
+        <div class="f-head">
+          <label for="years-r">Loan term</label>
+          <span class="val" id="years-v">30 years</span>
+        </div>
+        <input type="range" id="years-r" min="10" max="30" step="1" aria-label="Loan term in years">
+        <div class="ticks"><span>10 years</span><span>30 years</span></div>
+      </div>
+
+      <details class="costs" id="costs">
+        <summary>
+          <span><span class="sum-t">QLD buying costs</span><span class="sum-v" id="sum-v">Owner-occupier · first home · established</span></span>
+          <span class="sum-a"><span class="closed">Adjust</span><span class="opened">Close</span></span>
+        </summary>
+        <div class="costs-body">
+          <div class="field">
+            <label for="buyer" class="lbl" style="font-weight:600;font-size:14.5px">Your situation</label>
+            <select id="buyer">
+              <option value="home">Owner-occupier · citizen or permanent resident</option>
+              <option value="invest">Investor · citizen or permanent resident</option>
+              <option value="foreign">Temporary resident or foreign buyer</option>
+            </select>
+          </div>
+          <label class="check" id="first-wrap"><input type="checkbox" id="first"><span>First home buyer<small>Never owned a home anywhere in the world.</small></span></label>
+          <label class="check" id="newhome-wrap"><input type="checkbox" id="newhome"><span>New home or off the plan<small>A brand-new first home pays no stamp duty.</small></span></label>
+          <label class="check" id="scheme-wrap"><input type="checkbox" id="scheme"><span>Use the 5% Deposit Scheme<small>Deposit from 5% with no LMI. Price cap of A$ 1M on the Gold Coast.</small></span></label>
+          <p class="note" id="foreign-note" hidden><b>Note:</b> you pay full stamp duty plus 8% AFAD on the price. Temporary residents and foreign buyers can currently only buy new homes in most cases and need FIRB approval, which has its own fee.</p>
+          <div class="field">
+            <div class="f-head">
+              <label for="other">Other costs</label>
+              <div class="money"><span>A$</span><input id="other" inputmode="numeric" autocomplete="off"></div>
+            </div>
+            <p class="hint">Conveyancing, building &amp; pest inspection, Titles Queensland registration and bank fees.</p>
+          </div>
+        </div>
+      </details>
+
+      <details class="costs" id="income-d">
+        <summary>
+          <span><span class="sum-t">Income and expenses for approval</span><span class="sum-v" id="sum-inc">Just me · no children · income not entered</span></span>
+          <span class="sum-a"><span class="closed">Adjust</span><span class="opened">Close</span></span>
+        </summary>
+        <div class="costs-body">
+          <div class="field">
+            <label for="hh" style="font-weight:600;font-size:14.5px">Who is borrowing</label>
+            <select id="hh">
+              <option value="single">Just me</option>
+              <option value="couple1">Couple, one income</option>
+              <option value="couple2">Couple, two incomes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="kids" style="font-weight:600;font-size:14.5px">Children or dependants</label>
+            <select id="kids">
+              <option value="0">None</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3 or more</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="f-head">
+              <label for="income">Gross annual income</label>
+              <div class="money"><span>A$</span><input id="income" inputmode="numeric" autocomplete="off" placeholder="optional"></div>
+            </div>
+            <p class="hint">Before tax. For a couple, both incomes combined. Fill this in to see whether your income gets approved and how much the bank would lend.</p>
+          </div>
+          <div class="field">
+            <div class="f-head">
+              <label for="expenses">Monthly living expenses</label>
+              <div class="money"><span>A$</span><input id="expenses" inputmode="numeric" autocomplete="off" placeholder="optional"></div>
+            </div>
+            <p class="hint" id="hem-hint">Excluding rent. The bank uses whichever is higher: your figure or the HEM benchmark.</p>
+          </div>
+          <div class="field">
+            <div class="f-head">
+              <label for="debts">Other loan repayments</label>
+              <div class="money"><span>A$</span><input id="debts" inputmode="numeric" autocomplete="off"></div>
+            </div>
+            <p class="hint">Per month: car loan, personal loan, buy now pay later.</p>
+          </div>
+          <div class="field">
+            <div class="f-head">
+              <label for="cards">Total credit card limits</label>
+              <div class="money"><span>A$</span><input id="cards" inputmode="numeric" autocomplete="off"></div>
+            </div>
+            <p class="hint">Banks count about 3.8% of the limit per month, even if you owe nothing on the card.</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section class="results" id="results" aria-live="polite" aria-label="Results">
+      <div class="hero" id="hero">
+        <p class="h-label" id="h-label">Monthly repayment</p>
+        <p class="h-value" id="h-value">–</p>
+        <p class="h-sub" id="h-sub"></p>
+      </div>
+
+      <div class="alerts" id="alerts"></div>
+
+      <div class="block">
+        <div class="b-head"><h2>Cash you need to buy</h2><strong id="cash-total">–</strong></div>
+        <div class="stack" id="stack" aria-hidden="true">
+          <i style="background:var(--c-dep)" id="s-dep"></i><i style="background:var(--c-duty)" id="s-duty"></i><i style="background:var(--c-lmi)" id="s-lmi"></i><i style="background:var(--c-other)" id="s-other"></i>
+        </div>
+        <dl class="rows">
+          <div><dt><span class="sw" style="background:var(--c-dep)"></span>Deposit<small id="r-dep-pct">20% of price</small></dt><dd id="r-dep">–</dd></div>
+          <div><dt><span class="sw" style="background:var(--c-duty)"></span>Stamp duty<small id="r-duty-note">Queensland rates</small></dt><dd id="r-duty">–</dd></div>
+          <div id="row-afad" hidden><dt><span class="sw" style="background:var(--c-duty)"></span>AFAD 8%<small>foreign buyer surcharge</small></dt><dd id="r-afad">–</dd></div>
+          <div><dt><span class="sw" style="background:var(--c-lmi)"></span>LMI<small id="r-lmi-note">lender's insurance, estimate</small></dt><dd id="r-lmi">–</dd></div>
+          <div><dt><span class="sw" style="background:var(--c-other)"></span>Other costs</dt><dd id="r-other">–</dd></div>
+        </dl>
+      </div>
+
+      <div class="block">
+        <h2>The loan</h2>
+        <dl class="rows">
+          <div><dt>Loan amount</dt><dd id="r-loan">–</dd></div>
+          <div><dt>LVR<small>share of the price the bank lends</small></dt><dd><span class="chip" id="r-lvr">–</span></dd></div>
+          <div id="row-pay-alt"><dt id="r-pay-lbl">Monthly repayment</dt><dd id="r-pay">–</dd></div>
+          <div><dt id="r-int-lbl">Interest over 30 years</dt><dd id="r-int">–</dd></div>
+          <div><dt>Total paid to the bank</dt><dd id="r-tot">–</dd></div>
+        </dl>
+      </div>
+
+      <div class="block" id="approval">
+        <h2>Bank approval</h2>
+        <p class="b-sub" id="ap-sub">Recommended gross annual income for this loan.</p>
+        <div class="tiles">
+          <div class="tile main">
+            <span class="t-l">Minimum to get approved</span>
+            <span class="t-v" id="ap-min">–</span>
+            <span class="t-s" id="ap-min-s"></span>
+          </div>
+          <div class="tile">
+            <span class="t-l">Comfortable</span>
+            <span class="t-v" id="ap-comf">–</span>
+            <span class="t-s" id="ap-comf-s">Repayment at most 30% of gross income</span>
+          </div>
+        </div>
+        <p class="status" id="ap-status" hidden></p>
+
+        <p class="h3" id="ap-how-t">How the bank does the maths, per month</p>
+        <dl class="rows">
+          <div><dt>Net income<small id="ap-net-s">after income tax and Medicare</small></dt><dd id="ap-net">–</dd></div>
+          <div><dt>Living expenses<small id="ap-exp-s">HEM benchmark</small></dt><dd id="ap-exp">–</dd></div>
+          <div><dt>Other debts and cards</dt><dd id="ap-debt">–</dd></div>
+          <div><dt id="ap-pay-l">Stress-tested repayment</dt><dd id="ap-pay">–</dd></div>
+          <div class="sum-row"><dt>Surplus</dt><dd class="tot" id="ap-left">–</dd></div>
+          <div><dt>DTI<small>total debt ÷ gross annual income</small></dt><dd><span class="chip" id="ap-dti">–</span></dd></div>
+        </dl>
+
+        <p class="h3">Minimum income by price and deposit</p>
+        <div class="tbl-wrap">
+          <table class="matrix">
+            <thead>
+              <tr class="grp"><th scope="col"></th><th scope="colgroup" colspan="3">deposit</th></tr>
+              <tr><th scope="col">Price</th><th scope="col">5%</th><th scope="col">10%</th><th scope="col">20%</th></tr>
+            </thead>
+            <tbody id="matrix"></tbody>
+          </table>
+        </div>
+        <p class="fine" id="ap-fine">Gross income per year, using the rate, term, household and expenses set above.</p>
+      </div>
+
+      <div class="block">
+        <h2>What if rates change?</h2>
+        <div class="tbl-wrap">
+          <table class="sens">
+            <thead><tr><th scope="col">Rate</th><th scope="col">Repayment/mo</th><th scope="col">Difference</th></tr></thead>
+            <tbody id="sens"></tbody>
+          </table>
+        </div>
+        <p class="fine">Banks approve a loan by checking you could still pay it at a rate 3 points above your actual rate (APRA rule). The “bank test” row shows that repayment.</p>
+      </div>
+    </section>
+  </main>
+
+  <section class="notes">
+    <div>
+      <h2>How it's calculated</h2>
+      <ul>
+        <li><b>Repayment:</b> principal and interest (P&amp;I) loan, variable rate held constant for the whole term, paid monthly. Fortnightly and weekly show the equivalent amount.</li>
+        <li><b>Stamp duty:</b> Queensland Revenue Office rates for contracts from 1 Aug 2026. Established first home: exempt up to A$ 700k, partial concession up to A$ 800k. New first home: exempt, no cap. Temporary resident or foreign buyer: full rates plus 8% AFAD.</li>
+        <li><b>LMI:</b> average of insurer rate cards (Helia and QBE) plus 9% QLD duty on the premium. A real quote can differ by a few thousand. Many lenders let you add LMI to the loan instead of paying it upfront.</li>
+        <li><b>5% Deposit Scheme:</b> for first home buyers who are citizens or permanent residents and will live in the home, with a A$ 1M price cap on the Gold Coast, Brisbane and Sunshine Coast.</li>
+        <li><b>Approval:</b> the bank tests the repayment at a rate 3 points higher (APRA rule) and deducts 2026-27 income tax and Medicare, living expenses (the higher of yours and HEM), other debts and 3.8% of card limits. The minimum also keeps DTI at 6 times income or less, since few loans above that get approved. For a couple with two incomes, income is split equally. Every bank has its own formula, so treat this as a range.</li>
+        <li><b>Comfortable:</b> repayment at today's rate of no more than 30% of gross income, the usual line for mortgage stress.</li>
+        <li><b>Not included:</b> First Home Owner Grant, FIRB fee, home insurance, council rates, body corporate and moving costs.</li>
+        <li>This is a planning estimate, not financial advice. Bank approval also depends on your income, expenses and other debts. Check figures with the Queensland Revenue Office, your lender or a broker.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Sources</h2>
+      <ul>
+        <li><a href="https://www.canstar.com.au/news/higher-rates-bigger-debt-average-borrower-faces-456-increase-in-2026/" target="_blank" rel="noopener">Canstar: rates after the November hike</a></li>
+        <li><a href="https://qro.qld.gov.au/duties/transfer-duty/concessions/homes/first-home/" target="_blank" rel="noopener">QRO: first home concession</a></li>
+        <li><a href="https://qro.qld.gov.au/duties/transfer-duty/concessions/homes/first-home-new-home/" target="_blank" rel="noopener">QRO: first home (new home) concession</a></li>
+        <li><a href="https://qro.qld.gov.au/duties/investors/afad/assessing/" target="_blank" rel="noopener">QRO: AFAD for foreign buyers</a></li>
+        <li><a href="https://www.housingaustralia.gov.au/faqs-and-key-terms" target="_blank" rel="noopener">Housing Australia: 5% Deposit Scheme</a></li>
+        <li><a href="https://www.realestatecalc.com.au/articles/apra-mortgage-serviceability-dti-rules-september-2026" target="_blank" rel="noopener">APRA rules: 3% buffer and DTI</a></li>
+        <li><a href="https://www.superguide.com.au/how-super-works/income-tax-rates-brackets" target="_blank" rel="noopener">2026-27 income tax rates</a></li>
+        <li><a href="https://www.yourfinanceguide.com.au/calculators/hem" target="_blank" rel="noopener">2026 HEM estimates</a></li>
+        <li><a href="https://github.com/dougfwnny/qld-home-loan-planner" target="_blank" rel="noopener">Source code on GitHub</a></li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<div class="bar" id="bar">
+  <div><span class="b-l" id="bar-l">Monthly repayment</span><span class="b-v" id="bar-v">–</span></div>
+  <button type="button" id="bar-btn">See details</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var nf = new Intl.NumberFormat("en-AU", {maximumFractionDigits:0});
+  var money = function(v){ return "A$ " + nf.format(Math.round(v)); };
+  var pct = function(v, d){ return (v*100).toLocaleString("en-AU", {maximumFractionDigits: d == null ? 1 : d}) + "%"; };
+  var rateFmt = function(r){ return r.toLocaleString("en-AU", {minimumFractionDigits:2, maximumFractionDigits:2}); };
+
+  var KEY = "simulador-casa-qld-v1";
+  var DEFAULTS = {mode:"entrada", price:1000000, depPct:20, target:4500, savings:150000, maxpay:4500,
+    rate:6.75, years:30, buyer:"home", first:true, newhome:false, scheme:false, other:5000,
+    hh:"single", kids:0, income:0, expenses:0, debts:0, cards:0};
+  var S = Object.assign({}, DEFAULTS);
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || "null"); if (saved && typeof saved === "object") Object.assign(S, saved); } catch(e){}
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
+
+  /* ---------- Maths ---------- */
+  function pmt(L, rate, years){
+    if (L <= 0) return 0;
+    var r = rate/1200, n = years*12;
+    return r === 0 ? L/n : L*r/(1 - Math.pow(1+r, -n));
+  }
+  function pv(P, rate, years){
+    var r = rate/1200, n = years*12;
+    return r === 0 ? P*n : P*(1 - Math.pow(1+r, -n))/r;
+  }
+  // QRO charges "per $100 or part thereof"
+  function per100(amount, rateP100){ return Math.ceil(amount/100) * rateP100; }
+  function dutyGeneral(v){
+    if (v <= 5000) return 0;
+    if (v <= 75000) return per100(v-5000, 1.5);
+    if (v <= 540000) return 1050 + per100(v-75000, 3.5);
+    if (v <= 1000000) return 17325 + per100(v-540000, 4.5);
+    return 38025 + per100(v-1000000, 5.75);
+  }
+  function dutyHome(v){
+    if (v <= 350000) return per100(v, 1);
+    if (v <= 540000) return 3500 + per100(v-350000, 3.5);
+    if (v <= 1000000) return 10150 + per100(v-540000, 4.5);
+    return 30850 + per100(v-1000000, 5.75);
+  }
+  function firstHomeConcession(v){
+    if (v <= 700000) return dutyHome(v);
+    if (v >= 800000) return 0;
+    var band = Math.floor((v-700000)/10000);
+    return 17350 - 1735*band;
+  }
+  function duties(v){
+    if (S.buyer === "foreign") return {duty: dutyGeneral(v), afad: 0.08*v, note:"full rates"};
+    if (S.buyer === "invest") return {duty: dutyGeneral(v), afad: 0, note:"full rates (investor)"};
+    if (S.first && S.newhome) return {duty: 0, afad: 0, note:"exempt: new first home"};
+    if (S.first){
+      var d = Math.max(0, dutyHome(v) - firstHomeConcession(v));
+      var note = v <= 700000 ? "exempt: first home up to 700k" : (v < 800000 ? "partial first home concession" : "no first home concession from 800k");
+      return {duty: d, afad: 0, note: note};
+    }
+    return {duty: dutyHome(v), afad: 0, note:"home concession rates"};
+  }
+  // LMI premium as % of loan by LVR (Helia/QBE average), + 9% QLD duty
+  var LMI_PTS = [[80,0.0045],[85,0.012],[88,0.017],[90,0.021],[92,0.030],[95,0.037]];
+  function lmiRate(lvr){
+    if (lvr <= 80) return 0;
+    for (var i=1; i<LMI_PTS.length; i++){
+      if (lvr <= LMI_PTS[i][0]){
+        var a = LMI_PTS[i-1], b = LMI_PTS[i];
+        return a[1] + (b[1]-a[1])*(lvr-a[0])/(b[0]-a[0]);
+      }
+    }
+    return 0.037;
+  }
+  var SCHEME_CAP = 1000000;
+  function schemeOn(){ return S.buyer === "home" && S.first && S.scheme; }
+  function lmi(L, v){
+    if (v <= 0 || L <= 0) return {amt:0, waived:false};
+    var lvr = L/v*100;
+    if (lvr <= 80) return {amt:0, waived:false};
+    if (schemeOn() && v <= SCHEME_CAP && lvr <= 95.0001) return {amt:0, waived:true};
+    return {amt: L*lmiRate(Math.min(lvr,95))*1.09, waived:false};
+  }
+  function cashFor(v, L){
+    var d = duties(v), m = lmi(L, v);
+    return {dep: v-L, duty: d.duty, afad: d.afad, dutyNote: d.note, lmi: m.amt, waived: m.waived, other: S.other,
+            total: (v-L) + d.duty + d.afad + m.amt + S.other};
+  }
+
+  function compute(){
+    var res = {alerts:[]};
+    var v, L, pay;
+    if (S.mode === "entrada"){
+      v = S.price;
+      var D = Math.min(v, v*S.depPct/100);
+      L = v - D;
+    } else if (S.mode === "parcela"){
+      v = S.price;
+      var Lfull = pv(S.target, S.rate, S.years);
+      L = Math.min(Lfull, 0.95*v);
+      if (Lfull > 0.95*v + 1){
+        res.alerts.push(["warn", "<b>More repayment than you need.</b> At " + money(S.target) + " a month you could borrow almost the whole price, but banks require at least a 5% deposit. Your repayment would be " + money(pmt(L,S.rate,S.years)) + "."]);
+      }
+    } else {
+      var Lmax = pv(S.maxpay, S.rate, S.years);
+      var best = 0, bestL = 0;
+      for (var x = 20000; x <= 6000000; x += 1000){
+        var lx = Math.min(Lmax, 0.95*x);
+        if (cashFor(x, lx).total <= S.savings){ best = x; bestL = lx; }
+      }
+      v = best; L = bestL;
+      if (best === 0){
+        res.alerts.push(["crit", "<b>Not enough yet.</b> Your savings don't cover the minimum 5% deposit plus buying costs. Increase your savings."]);
+      } else if (best >= 6000000){
+        res.alerts.push(["warn", "<b>Above A$ 6M.</b> The planner only goes up to this amount."]);
+      }
+    }
+    pay = pmt(L, S.rate, S.years);
+    var c = cashFor(v, L);
+    var lvr = v > 0 ? L/v*100 : 0;
+
+    if (S.mode === "entrada" && S.depPct < 5){
+      res.alerts.push(["crit", "<b>Deposit below 5%.</b> Banks usually require at least " + money(0.05*v) + " at this price."]);
+    }
+    if (schemeOn() && v > SCHEME_CAP && lvr > 80){
+      res.alerts.push(["warn", "<b>Outside the 5% Deposit Scheme.</b> The price is above the A$ 1M cap, so LMI applies."]);
+    }
+    if (c.waived){
+      res.alerts.push(["ok", "<b>No LMI with the 5% Deposit Scheme.</b> Estimated saving of " + money(L*lmiRate(Math.min(lvr,95))*1.09) + "."]);
+    }
+    if (S.buyer === "foreign"){
+      res.alerts.push(["warn", "<b>Temporary resident or foreign buyer:</b> full stamp duty plus 8% AFAD. In most cases you can only buy a new home, with FIRB approval."]);
+    }
+    res.v = v; res.L = L; res.pay = pay; res.c = c; res.lvr = lvr;
+    return res;
+  }
+
+  /* ---------- Approval ---------- */
+  // 2026-27 resident income tax + 2% Medicare (no offsets)
+  function incomeTax(g){
+    var t = 0;
+    if (g > 18200) t += (Math.min(g, 45000) - 18200)*0.15;
+    if (g > 45000) t += (Math.min(g, 135000) - 45000)*0.30;
+    if (g > 135000) t += (Math.min(g, 190000) - 135000)*0.37;
+    if (g > 190000) t += (g - 190000)*0.45;
+    if (g > 30000) t += g*0.02;
+    return t;
+  }
+  function earners(){ return S.hh === "couple2" ? 2 : 1; }
+  function netMonthly(G){ var e = earners(), g = G/e; return e*(g - incomeTax(g))/12; }
+  // Approximate HEM (A$/month) by gross household income: 60k, 100k, 150k, 200k
+  var HEM_X = [60000, 100000, 150000, 200000];
+  var HEM_T = {
+    s0:[1640,2010,2360,2650], s1:[2060,2450,2900,3270], s2:[2470,2900,3420,3880],
+    c0:[2520,2860,3350,3760], c1:[2860,3250,3800,4250], c2:[3210,3640,4240,4740]
+  };
+  var HEM_KID3 = [350,390,440,490];
+  function interp(arr, G){
+    if (G <= HEM_X[0]) return arr[0];
+    for (var i=1; i<HEM_X.length; i++){
+      if (G <= HEM_X[i]) return arr[i-1] + (arr[i]-arr[i-1])*(G-HEM_X[i-1])/(HEM_X[i]-HEM_X[i-1]);
+    }
+    var k = HEM_X.length-1, slope = (arr[k]-arr[k-1])/(HEM_X[k]-HEM_X[k-1]);
+    return arr[k] + slope*(Math.min(G, 400000) - HEM_X[k]);
+  }
+  function hem(G){
+    var key = (S.hh === "single" ? "s" : "c") + Math.min(S.kids, 2);
+    var v = interp(HEM_T[key], G);
+    if (S.kids >= 3) v += interp(HEM_KID3, G);
+    return v;
+  }
+  function expensesFor(G){ return Math.max(S.expenses || 0, hem(G)); }
+  function commitments(){ return (S.debts || 0) + 0.038*(S.cards || 0); }
+  function testRate(){ return S.rate + 3; }
+  function surplus(G, L){ return netMonthly(G) - expensesFor(G) - commitments() - pmt(L, testRate(), S.years); }
+  function minIncome(L){
+    if (L <= 0) return {G:0, by:"none", svc:0};
+    var lo = 0, hi = 5000000;
+    if (surplus(hi, L) < 0) return {G:Infinity, by:"svc", svc:Infinity};
+    for (var i=0; i<60; i++){ var mid = (lo+hi)/2; if (surplus(mid, L) >= 0) hi = mid; else lo = mid; }
+    var dti = L/6;
+    return hi >= dti ? {G:hi, by:"svc", svc:hi} : {G:dti, by:"dti", svc:hi};
+  }
+  function maxLoan(G){
+    var avail = netMonthly(G) - expensesFor(G) - commitments();
+    var svc = avail > 0 ? pv(avail, testRate(), S.years) : 0;
+    return Math.min(svc, 6*G);
+  }
+  var up1k = function(v){ return Math.ceil(v/1000)*1000; };
+  function fmtK(G){
+    if (!isFinite(G)) return "–";
+    if (G >= 1000000) return (G/1000000).toLocaleString("en-AU", {maximumFractionDigits:2}) + "M";
+    return nf.format(Math.ceil(G/1000)) + "k";
+  }
+  var HH_LABEL = {single:"Just me", couple1:"Couple, one income", couple2:"Couple, two incomes"};
+  function kidsLabel(){ return S.kids === 0 ? "no children" : (S.kids === 1 ? "1 child" : (S.kids === 2 ? "2 children" : "3+ children")); }
+
+  function renderApproval(r){
+    var L = r.L;
+    $("sum-inc").textContent = HH_LABEL[S.hh] + " · " + kidsLabel() + " · " + (S.income > 0 ? "income " + money(S.income) : "income not entered");
+    $("approval").hidden = L <= 0;
+    if (L <= 0) return;
+    var mi = minIncome(L);
+    $("ap-sub").textContent = "Gross annual income needed to borrow " + money(L) + " over " + S.years + " years.";
+    if (!isFinite(mi.G)){
+      $("ap-min").textContent = "over A$ 5M";
+      $("ap-min-s").textContent = "Expenses and debts leave no surplus";
+    } else {
+      $("ap-min").innerHTML = "<small>A$ </small>" + nf.format(up1k(mi.G)) + "<small> /yr</small>";
+      $("ap-min-s").textContent = mi.by === "dti"
+        ? "Set by the DTI 6 limit. On repayments alone it would be " + money(up1k(mi.svc))
+        : "≈ " + money(mi.G/12) + " gross per month";
+    }
+    var comfG = r.pay*12/0.30;
+    $("ap-comf").innerHTML = "<small>A$ </small>" + nf.format(up1k(comfG)) + "<small> /yr</small>";
+    $("ap-comf-s").textContent = "Repayment of " + money(r.pay) + " at most 30% of gross income";
+
+    var hasInc = S.income > 0;
+    var st = $("ap-status");
+    if (hasInc && isFinite(mi.G)){
+      var cap = Math.floor(maxLoan(S.income)/1000)*1000;
+      st.hidden = false;
+      if (S.income >= mi.G){
+        st.className = "status ok";
+        st.innerHTML = "<b>Your income covers the minimum.</b> On " + money(S.income) + " a year, the bank would lend up to about " + money(cap) + ".";
+      } else {
+        st.className = "status warn";
+        st.innerHTML = "<b>About " + money(up1k(mi.G - S.income)) + " a year short.</b> On your income, the bank would lend up to about " + money(cap) + ", and this scenario needs " + money(L) + ".";
+      }
+    } else { st.hidden = true; }
+
+    var G = hasInc ? S.income : (isFinite(mi.G) ? mi.G : 0);
+    $("ap-how-t").textContent = hasInc ? "How the bank sees your income, per month" : "How the bank does the maths at the minimum income, per month";
+    $("ap-net").textContent = "+ " + money(netMonthly(G));
+    $("ap-net-s").textContent = "after income tax and Medicare" + (S.hh === "couple2" ? ", two equal incomes" : "");
+    var h = hem(G);
+    $("ap-exp").textContent = "− " + money(expensesFor(G));
+    $("ap-exp-s").textContent = (S.expenses || 0) > h ? "the figure you entered" : "HEM benchmark";
+    $("ap-debt").textContent = "− " + money(commitments());
+    var tp = pmt(L, testRate(), S.years);
+    $("ap-pay-l").textContent = "Repayment tested at " + rateFmt(testRate()) + "%";
+    $("ap-pay").textContent = "− " + money(tp);
+    var left = surplus(G, L);
+    var leftEl = $("ap-left");
+    leftEl.textContent = (left < 0 ? "− " : "") + money(Math.abs(left));
+    leftEl.style.color = left < 0 ? "var(--crit)" : "var(--ok)";
+    var dti = G > 0 ? L/G : Infinity;
+    var dc = $("ap-dti");
+    if (!isFinite(dti)){ dc.className = "chip crit"; dc.textContent = "no income"; }
+    else {
+      var dt = dti.toLocaleString("en-AU", {maximumFractionDigits:1});
+      dc.className = dti <= 6.0001 ? "chip ok" : "chip warn";
+      dc.textContent = dt + (dti <= 6.0001 ? " · 6 or less" : " · above 6, hard to approve");
+    }
+    $("hem-hint").textContent = "Excluding rent. The bank uses whichever is higher: your figure or the HEM benchmark, which for you is around " + money(h) + " a month.";
+
+    // income × price × deposit table
+    var prices = [600000, 700000, 800000, 900000, 1000000, 1200000];
+    var curV = Math.round(r.v), curPct = r.v > 0 ? r.c.dep/r.v*100 : -1;
+    if (curV > 0 && prices.indexOf(curV) === -1){ prices.push(curV); prices.sort(function(a,b){ return a-b; }); }
+    var deps = [5, 10, 20];
+    $("matrix").innerHTML = prices.map(function(p){
+      var label = p >= 1000000 ? "A$ " + (p/1000000).toLocaleString("en-AU", {maximumFractionDigits:2}) + "M" : "A$ " + nf.format(Math.round(p/1000)) + "k";
+      return "<tr><td>" + label + "</td>" + deps.map(function(d){
+        var g = minIncome(p*(1 - d/100)).G;
+        var hit = p === curV && Math.abs(curPct - d) < 0.5;
+        return '<td' + (hit ? ' class="hit"' : '') + '>' + fmtK(g) + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+    $("ap-fine").textContent = "Gross income per year, in A$. Tested at " + rateFmt(testRate()) + "%, " + S.years + "-year term, " + HH_LABEL[S.hh].toLowerCase() + ", " + kidsLabel() + (commitments() > 0 ? ", with other debts" : "") + ". The dot marks your scenario.";
+  }
+
+  /* ---------- Rendering ---------- */
+  function heroValue(amount, per){
+    return '<span class="cur">A$</span>' + nf.format(Math.round(amount)) + (per ? '<span class="per">' + per + '</span>' : '');
+  }
+  function render(){
+    var r = compute();
+    var n = S.years*12;
+    var fort = r.pay*12/26, week = r.pay*12/52;
+    var label, valueHTML, sub, barL, barV;
+
+    if (S.mode === "entrada"){
+      label = "Monthly repayment";
+      valueHTML = heroValue(r.pay, "/mo");
+      sub = "Fortnightly " + money(fort) + " · weekly " + money(week);
+      barL = "Monthly repayment"; barV = money(r.pay);
+    } else if (S.mode === "parcela"){
+      label = "Deposit needed";
+      valueHTML = heroValue(r.c.dep);
+      sub = (r.v > 0 ? pct(r.c.dep/r.v) : "0%") + " of price · plus " + money(r.c.total - r.c.dep) + " in costs";
+      barL = "Deposit needed"; barV = money(r.c.dep);
+    } else {
+      label = "Property up to";
+      valueHTML = heroValue(r.v);
+      sub = r.v > 0 ? ("Deposit " + money(r.c.dep) + " · repayment " + money(r.pay) + "/mo") : "Adjust your savings or repayment";
+      barL = "Property up to"; barV = money(r.v);
+    }
+    $("h-label").textContent = label;
+    $("h-value").innerHTML = valueHTML;
+    $("h-sub").textContent = sub;
+    $("bar-l").textContent = barL;
+    $("bar-v").textContent = barV;
+
+    // alerts
+    $("alerts").innerHTML = r.alerts.map(function(a){ return '<p class="alert ' + a[0] + '">' + a[1] + '</p>'; }).join("");
+
+    // cash needed
+    var c = r.c;
+    $("cash-total").textContent = money(c.total);
+    $("r-dep").textContent = money(c.dep);
+    $("r-dep-pct").textContent = r.v > 0 ? pct(c.dep/r.v) + " of price" : "–";
+    $("r-duty").textContent = money(c.duty);
+    $("r-duty-note").textContent = c.dutyNote;
+    $("row-afad").hidden = !(c.afad > 0);
+    $("r-afad").textContent = money(c.afad);
+    $("r-lmi").textContent = money(c.lmi);
+    $("r-lmi-note").textContent = c.waived ? "waived by the 5% Deposit Scheme" : (r.lvr <= 80 ? "not needed with a 20%+ deposit" : "lender's insurance, estimate");
+    $("r-other").textContent = money(c.other);
+    var tot = Math.max(1, c.total);
+    $("s-dep").style.flexBasis = (c.dep/tot*100) + "%";
+    $("s-duty").style.flexBasis = ((c.duty + c.afad)/tot*100) + "%";
+    $("s-lmi").style.flexBasis = (c.lmi/tot*100) + "%";
+    $("s-other").style.flexBasis = (c.other/tot*100) + "%";
+
+    // loan
+    $("r-loan").textContent = money(r.L);
+    var chip = $("r-lvr");
+    var lvrTxt = r.lvr.toLocaleString("en-AU", {maximumFractionDigits:1}) + "%";
+    if (r.L <= 0){ chip.className = "chip ok"; chip.textContent = "no loan"; }
+    else if (r.lvr <= 80){ chip.className = "chip ok"; chip.textContent = lvrTxt + " · no LMI"; }
+    else if (r.lvr <= 95.0001){ chip.className = c.waived ? "chip ok" : "chip warn"; chip.textContent = lvrTxt + (c.waived ? " · no LMI (scheme)" : " · LMI applies"); }
+    else { chip.className = "chip crit"; chip.textContent = lvrTxt + " · above the 95% limit"; }
+    $("row-pay-alt").hidden = (S.mode === "entrada");
+    $("r-pay").textContent = money(r.pay) + "/mo";
+    $("r-int-lbl").textContent = "Interest over " + S.years + " years";
+    $("r-int").textContent = money(Math.max(0, r.pay*n - r.L));
+    $("r-tot").textContent = money(r.pay*n);
+
+    // rate sensitivity
+    var deltas = [-0.5, 0, 0.5, 1, 3];
+    $("sens").innerHTML = deltas.map(function(d){
+      var rt = Math.max(0.01, S.rate + d);
+      var p = pmt(r.L, rt, S.years);
+      var diff = p - r.pay;
+      var cls = d === 0 ? "cur" : (d === 3 ? "stress" : "");
+      var diffTxt = d === 0 ? "–" : ((diff > 0 ? "+" : "−") + money(Math.abs(diff)).replace("A$ ", "A$ "));
+      var diffCls = d === 0 ? "" : (diff > 0 ? "up" : "down");
+      return '<tr class="' + cls + '"><td>' + rateFmt(rt) + '%</td><td>' + money(p) + '</td><td class="' + diffCls + '">' + diffTxt + '</td></tr>';
+    }).join("");
+
+    // costs summary
+    var parts = [];
+    if (S.buyer === "home"){ parts.push("Owner-occupier"); parts.push(S.first ? "first home" : "not first home"); if (S.first) parts.push(S.newhome ? "new" : "established"); if (S.first && S.scheme) parts.push("5% Scheme"); }
+    else if (S.buyer === "invest"){ parts.push("Investor"); }
+    else { parts.push("Temporary or foreign"); }
+    parts.push("other " + money(S.other));
+    $("sum-v").textContent = parts.join(" · ");
+
+    renderApproval(r);
+    save();
+  }
+
+  /* ---------- Field bindings ---------- */
+  function digits(s){ var d = String(s).replace(/[^\d]/g, ""); return d ? parseInt(d, 10) : 0; }
+  function setFill(range){
+    var min = +range.min, max = +range.max, val = +range.value;
+    range.style.setProperty("--p", ((val-min)/(max-min)*100) + "%");
+  }
+  function clamp(v, a, b){ return Math.min(b, Math.max(a, v)); }
+
+  function bindMoney(key, inputId, rangeId, optional){
+    var inp = $(inputId), rng = rangeId ? $(rangeId) : null;
+    function show(){ inp.value = (optional && !S[key]) ? "" : nf.format(S[key]); }
+    function syncRange(){ if (rng){ rng.value = clamp(S[key], +rng.min, +rng.max); setFill(rng); } }
+    show(); syncRange();
+    inp.addEventListener("input", function(){ S[key] = digits(inp.value); syncRange(); if (key === "price") syncDeposit(true); render(); });
+    inp.addEventListener("blur", show);
+    if (rng) rng.addEventListener("input", function(){ S[key] = +rng.value; show(); setFill(rng); if (key === "price") syncDeposit(true); render(); });
+  }
+
+  // Deposit: the percentage drives it; changing the price keeps the %.
+  var depInp = $("deposit"), depRng = $("deposit-r");
+  function syncDeposit(fromPrice){
+    var amt = Math.round(S.price*S.depPct/100);
+    if (fromPrice || document.activeElement !== depInp) depInp.value = nf.format(amt);
+    depRng.value = clamp(S.depPct, +depRng.min, +depRng.max); setFill(depRng);
+    $("dep-pct").textContent = S.depPct.toLocaleString("en-AU", {maximumFractionDigits:1}) + "% of price";
+  }
+  depInp.addEventListener("input", function(){
+    var amt = digits(depInp.value);
+    S.depPct = S.price > 0 ? Math.min(100, amt/S.price*100) : 0;
+    syncDeposit(false); render();
+  });
+  depInp.addEventListener("blur", function(){ depInp.value = nf.format(Math.round(S.price*S.depPct/100)); });
+  depRng.addEventListener("input", function(){ S.depPct = +depRng.value; syncDeposit(true); render(); });
+
+  bindMoney("price", "price", "price-r");
+  bindMoney("target", "target", "target-r");
+  bindMoney("savings", "savings", "savings-r");
+  bindMoney("maxpay", "maxpay", "maxpay-r");
+  bindMoney("other", "other", null);
+  bindMoney("income", "income", null, true);
+  bindMoney("expenses", "expenses", null, true);
+  bindMoney("debts", "debts", null);
+  bindMoney("cards", "cards", null);
+  syncDeposit(true);
+
+  // Household
+  var hhSel = $("hh"), kidsSel = $("kids");
+  hhSel.value = S.hh; kidsSel.value = String(S.kids);
+  hhSel.addEventListener("change", function(){ S.hh = hhSel.value; render(); });
+  kidsSel.addEventListener("change", function(){ S.kids = +kidsSel.value; render(); });
+
+  // Rate
+  var rateInp = $("rate"), rateRng = $("rate-r");
+  function syncRate(fromText){
+    if (!fromText) rateInp.value = rateFmt(S.rate);
+    rateRng.value = clamp(S.rate, +rateRng.min, +rateRng.max); setFill(rateRng);
+    Array.prototype.forEach.call(document.querySelectorAll("#rate-chips button"), function(b){
+      b.classList.toggle("on", Math.abs(+b.dataset.rate - S.rate) < 0.001);
+    });
+  }
+  rateInp.addEventListener("input", function(){
+    var v = parseFloat(rateInp.value.replace(/\s/g, "").replace(",", "."));
+    if (!isNaN(v) && v >= 0 && v < 30){ S.rate = v; syncRate(true); render(); }
+  });
+  rateInp.addEventListener("blur", function(){ rateInp.value = rateFmt(S.rate); });
+  rateRng.addEventListener("input", function(){ S.rate = Math.round(+rateRng.value*100)/100; syncRate(false); render(); });
+  Array.prototype.forEach.call(document.querySelectorAll("#rate-chips button"), function(b){
+    b.addEventListener("click", function(){ S.rate = +b.dataset.rate; syncRate(false); render(); });
+  });
+  syncRate(false);
+
+  // Term
+  var yrRng = $("years-r");
+  function syncYears(){ yrRng.value = S.years; setFill(yrRng); $("years-v").textContent = S.years + " years"; }
+  yrRng.addEventListener("input", function(){ S.years = +yrRng.value; syncYears(); render(); });
+  syncYears();
+
+  // Buyer situation
+  var buyer = $("buyer"), first = $("first"), newhome = $("newhome"), scheme = $("scheme");
+  function syncBuyer(){
+    buyer.value = S.buyer; first.checked = S.first; newhome.checked = S.newhome; scheme.checked = S.scheme;
+    var home = S.buyer === "home";
+    $("first-wrap").hidden = !home;
+    $("newhome-wrap").hidden = !(home && S.first);
+    $("scheme-wrap").hidden = !(home && S.first);
+    $("foreign-note").hidden = S.buyer !== "foreign";
+  }
+  buyer.addEventListener("change", function(){ S.buyer = buyer.value; syncBuyer(); render(); });
+  first.addEventListener("change", function(){ S.first = first.checked; syncBuyer(); render(); });
+  newhome.addEventListener("change", function(){ S.newhome = newhome.checked; render(); });
+  scheme.addEventListener("change", function(){ S.scheme = scheme.checked; render(); });
+  syncBuyer();
+
+  // Modes
+  var tabs = document.querySelectorAll(".modes button");
+  function syncMode(){
+    Array.prototype.forEach.call(tabs, function(t){ t.setAttribute("aria-selected", t.dataset.mode === S.mode ? "true" : "false"); });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-show]"), function(el){
+      el.hidden = el.dataset.show.split(" ").indexOf(S.mode) === -1;
+    });
+  }
+  Array.prototype.forEach.call(tabs, function(t){
+    t.addEventListener("click", function(){ S.mode = t.dataset.mode; syncMode(); render(); });
+  });
+  syncMode();
+
+  // Fixed bar on phones: hides when the main result is on screen
+  var bar = $("bar");
+  $("bar-btn").addEventListener("click", function(){
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    $("results").scrollIntoView({behavior: reduce ? "auto" : "smooth", block:"start"});
+  });
+  if ("IntersectionObserver" in window){
+    new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ bar.classList.toggle("off", e.isIntersecting); });
+    }, {threshold:0.4}).observe($("hero"));
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
